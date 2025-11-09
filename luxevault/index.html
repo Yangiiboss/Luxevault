@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LUXE VAULT</title>
+
+  <!-- TON Connect UI -->
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      text-align: center;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    h1 { 
+      font-size: 2.5rem; 
+      margin-bottom: 10px; 
+      color: #FFD700; 
+    }
+    p { 
+      margin-bottom: 30px; 
+      opacity: 0.8; 
+      font-size: 1.1rem;
+    }
+    #connectButton button {
+      padding: 14px 28px;
+      background: #FFD700;
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #connectButton button:hover { 
+      background: #e6c200; 
+    }
+  </style>
+</head>
+<body>
+  <h1 style="font-size: 2.8rem; color: #FFD700; margin-bottom: 12px;">LUXE VAULT</h1>
+<p style="font-size: 1.1rem; opacity: 0.85; margin-bottom: 35px;">
+  Prove ownership of your real luxury bag with NFC + TON blockchain
+</p>
+
+<div id="connectButton"></div>
+  <h1>LUXE VAULT</h1>
+  <p>Prove ownership of your real luxury bag with NFC + TON blockchain</p>
+
+  <div id="connectButton"></div>
+
+  <script>
+    // CORRECT: TonConnectUI (capital T, C, U, I)
+    const connector = new TonConnectUI({
+      manifestUrl: 'tonconnect-manifest.json'
+    });
+
+    const button = document.getElementById('connectButton');
+
+    connector.onStatusChange((wallet) => {
+      if (wallet) {
+        button.innerHTML = `
+          <p style="margin-top:20px; font-weight:bold;">
+            Connected: ${wallet.account.address.slice(0,6)}...${wallet.account.address.slice(-4)}
+          </p>
+        `;
+      } else {
+        button.innerHTML = `
+          <button onclick="connector.connectWallet()">
+            Connect TON Wallet
+          </button>
+        `;
+      }
+    });
+
+    // Optional: Auto-open wallet
+    // connector.connectWallet();
+  </script>
+</body>
+</html>
