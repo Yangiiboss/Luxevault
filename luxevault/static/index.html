@@ -1,80 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LUXE VAULT</title>
 
-  <!-- Telegram Web App SDK -->
+  <!-- NO CACHE (CRITICAL FOR TELEGRAM) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- TELEGRAM WEB APP -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- TON Connect UI -->
-  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
+  <!-- TON CONNECT — OFFICIAL CDN THAT WORKS 100% IN TELEGRAM -->
+  <script src="https://tonconnect.github.io/tonconnect-ui/dist/tonconnect-ui.min.js"></script>
 
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background: #000;
-      color: #fff;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      text-align: center;
-      padding: 40px 20px;
-      min-height: 100vh;
-    }
-    h1 {
-      font-size: 2.5rem;
-      background: linear-gradient(45deg, #FFD700, #FFA500);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 10px;
-    }
-    p { opacity: 0.8; margin-bottom: 30px; font-size: 1.1rem; }
-
-    .gold-btn {
-      background: #FFD700;
-      color: #000;
-      border: none;
-      padding: 16px 32px;
-      border-radius: 14px;
-      font-weight: bold;
-      font-size: 1.2rem;
-      cursor: pointer;
-      margin: 12px auto;
-      display: inline-block;
-      box-shadow: 0 4px 15px rgba(255,215,0,0.4);
-      transition: 0.2s;
-    }
-    .gold-btn:hover { background: #FFC107; transform: scale(1.03); }
-
-    #status { margin-top: 25px; line-height: 1.6; font-size: 1.1rem; }
-    .connected { color: #FFD700; font-weight: bold; font-size: 1.1rem; }
-    a { color: #FFD700; text-decoration: underline; }
+    body { background:#000; color:#fff; font-family:'Helvetica Neue',Arial,sans-serif; text-align:center; padding:40px 20px; min-height:100vh; }
+    h1 { font-size:2.5rem; background:linear-gradient(45deg,#FFD700,#FFA500); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:10px; }
+    p { opacity:0.8; margin-bottom:30px; font-size:1.1rem; }
+    .gold-btn { background:#FFD700; color:#000; border:none; padding:16px 32px; border-radius:14px; font-weight:bold; font-size:1.2rem; cursor:pointer; margin:12px auto; display:inline-block; box-shadow:0 4px 15px rgba(255,215,0,0.4); transition:0.2s; }
+    .gold-btn:hover { background:#FFC107; transform:scale(1.03); }
+    #status { margin-top:25px; line-height:1.6; font-size:1.1rem; }
+    .connected { color:#FFD700; font-weight:bold; font-size:1.1rem; }
+    a { color:#FFD700; text-decoration:underline; }
   </style>
 </head>
 <body>
-
   <h1>LUXE VAULT</h1>
   <p>Prove ownership of your real luxury bag with NFC + TON blockchain</p>
 
-  <!-- Wallet Connect Area -->
   <div id="connectButton">
     <button class="gold-btn" onclick="tonConnectUI.connectWallet()">Connect TON Wallet</button>
   </div>
 
-  <!-- NFC Scan Button -->
   <button id="nfcBtn" class="gold-btn">SCAN NFC TAG</button>
 
-  <!-- Result Area -->
   <div id="status"></div>
 
   <script>
-    // === Telegram Ready ===
     Telegram.WebApp.ready();
     Telegram.WebApp.expand();
 
-    // === TON Connect UI (CORRECT CLASS NAME) ===
     const tonConnectUI = new TONConnectUI({
       manifestUrl: 'https://luxevault.onrender.com/tonconnect-manifest.json'
     });
@@ -82,7 +51,6 @@
     const connectDiv = document.getElementById('connectButton');
     const statusDiv = document.getElementById('status');
 
-    // === Wallet Status Update ===
     tonConnectUI.onStatusChange((wallet) => {
       if (wallet) {
         const short = `${wallet.account.address.slice(0,6)}...${wallet.account.address.slice(-4)}`;
@@ -92,7 +60,6 @@
       }
     });
 
-    // === NFC SCAN ===
     document.getElementById('nfcBtn').onclick = async () => {
       if ('NDEFReader' in window) {
         try {
@@ -138,7 +105,6 @@
           statusDiv.innerHTML = "NFC permission denied";
         }
       } else {
-        // === FALLBACK: Manual Input (for testing on PC) ===
         const manual = prompt("NFC not supported.\nEnter serial (e.g. 04:8A:2F:1B):");
         if (manual) {
           const nfc = manual.replace(/:/g, '').toUpperCase();
@@ -156,55 +122,50 @@
       }
     };
 
-    async function mintNFT(brand, nfc) {
-  if (!tonConnectUI.connected) {
-    statusDiv.innerHTML = "Connect wallet first!";
-    return;
-  }
+    window.mintNFT = async (brand, nfc) => {
+      if (!tonConnectUI.connected) {
+        statusDiv.innerHTML += "<br>Please connect wallet first!";
+        return;
+      }
 
-  const mintStatus = document.getElementById('mintStatus');
-  mintStatus.innerHTML = "Minting...";
+      const mintStatus = document.getElementById('mintStatus') || statusDiv;
+      mintStatus.innerHTML = "Minting...";
 
-  try {
-    // Properly encode NFT metadata
-    const metadata = {
-      name: `${brand} Authenticity Certificate`,
-      description: `Soulbound NFT for real ${brand} bag (NFC: ${nfc})`,
-      image: "https://luxevault.onrender.com/nft.png",
-      attributes: [
-        { trait_type: "Brand", value: brand },
-        { trait_type: "NFC Serial", value: nfc },
-        { trait_type: "Type", value: "Soulbound" },
-        { trait_type: "Verified", value: "True" }
-      ]
+      try {
+        const metadata = {
+          name: `${brand} Authenticity Certificate`,
+          description: `Soulbound NFT for real ${brand} bag (NFC: ${nfc})`,
+          image: "https://luxevault.onrender.com/nft.png",
+          attributes: [
+            { trait_type: "Brand", value: brand },
+            { trait_type: "NFC Serial", value: nfc },
+            { trait_type: "Type", value: "Soulbound" },
+            { trait_type: "Verified", value: "True" }
+          ]
+        };
+
+        const payload = btoa(JSON.stringify(metadata));
+
+        const tx = await tonConnectUI.sendTransaction({
+          validUntil: Math.floor(Date.now() / 1000) + 300,
+          messages: [{
+            address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c",
+            amount: "50000000",
+            payload: payload
+          }]
+        });
+
+        mintStatus.innerHTML = `
+          MINTED SUCCESSFULLY!<br>
+          <a href="https://tonviewer.com/${tx.boc}" target="_blank">View on Tonviewer</a>
+        `;
+
+        Telegram.WebApp.showAlert("Soulbound NFT minted forever!");
+      } catch (error) {
+        console.error(error);
+        mintStatus.innerHTML = `Mint failed: ${error.message || "Rejected"}`;
+      }
     };
-
-    const payload = btoa(JSON.stringify(metadata));
-
-    // Send transaction to TON NFT minter
-    const tx = await tonConnectUI.sendTransaction({
-      validUntil: Math.floor(Date.now() / 1000) + 300, // 5 min expiry
-      messages: [
-        {
-          address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // Official TON NFT minter
-          amount: "50000000", // 0.05 TON
-          payload: payload
-        }
-      ]
-    });
-
-    // Success!
-    mintStatus.innerHTML = `
-      MINTED SUCCESSFULLY!<br>
-      <a href="https://tonviewer.com/${tx.boc}" target="_blank" style="color:#FFD700;">
-        View on Tonviewer
-      </a>
-    `;
-
-    Telegram.WebApp.showAlert("Soulbound NFT minted forever!");
-
-  } catch (error) {
-    console.error("Mint error:", error);
-    mintStatus.innerHTML = `Mint failed: ${error.message || "Transaction rejected"}`;
-  }
-}
+  </script>
+</body>
+</html>

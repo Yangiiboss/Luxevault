@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: luxevault
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app    # ← main.py + app variable
+    envVars:
+      PYTHON_VERSION: 3.11.5
