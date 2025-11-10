@@ -37,14 +37,14 @@
   </div>
 
   <button id="nfcBtn" class="gold-btn">SCAN NFC TAG</button>
-
+  <div id="ton-connect"></div>
   <div id="status"></div>
 
   <script>
     Telegram.WebApp.ready();
     Telegram.WebApp.expand();
 
-    const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    const connector = new TonConnect({
       manifestUrl: 'https://luxevault.onrender.com/tonconnect-manifest.json', buttonRootId: "ton-connect"
     });
 
