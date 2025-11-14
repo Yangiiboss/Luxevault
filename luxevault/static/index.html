@@ -1,179 +1,171 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LUXE VAULT</title>
+<script>
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
 
-  <!-- NO CACHE (CRITICAL FOR TELEGRAM) -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
+  // Initialize TonConnect
+  const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: 'https://api.jsonbin.io/v3/b/69133df143b1c97be9a6e0f2?meta=false',
+    buttonRootId: "ton-connect"
+  });
 
-  <!-- TELEGRAM WEB APP -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  const statusDiv = document.getElementById('status');
 
-  <!-- TON CONNECT — OFFICIAL CDN THAT WORKS 100% IN TELEGRAM -->
-  <script src='https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js'></script>
+  // Handle wallet status changes
+  tonConnectUI.onStatusChange((wallet) => {
+    if (wallet) {
+      const short = `${wallet.account.address.slice(0,6)}...${wallet.account.address.slice(-4)}`;
+      statusDiv.innerHTML = `<div class="connected">Connected: ${short}</div>`;
+    } else {
+      statusDiv.innerHTML = '';
+    }
+  });
 
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#000; color:#fff; font-family:'Helvetica Neue',Arial,sans-serif; text-align:center; padding:40px 20px; min-height:100vh; }
-    h1 { font-size:2.5rem; background:linear-gradient(45deg,#FFD700,#FFA500); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:10px; }
-    p { opacity:0.8; margin-bottom:30px; font-size:1.1rem; }
-    .gold-btn { background:#FFD700; color:#000; border:none; padding:16px 32px; border-radius:14px; font-weight:bold; font-size:1.2rem; cursor:pointer; margin:12px auto; display:inline-block; box-shadow:0 4px 15px rgba(255,215,0,0.4); transition:0.2s; }
-    .gold-btn:hover { background:#FFC107; transform:scale(1.03); }
-    #status { margin-top:25px; line-height:1.6; font-size:1.1rem; }
-    .connected { color:#FFD700; font-weight:bold; font-size:1.1rem; }
-    a { color:#FFD700; text-decoration:underline; }
-  </style>
-</head>
-<body>
-  <h1>LUXE VAULT</h1>
-  <p>Prove ownership of your real luxury bag with NFC + TON blockchain</p>
-
-  <div style="display: flex; flex-direction: row; justify-content: center; align-item: center;" id="ton-connect">
+  // Fixed NFC function
+  document.getElementById('nfcBtn').onclick = async () => {
+    statusDiv.innerHTML = "Initializing NFC...";
     
-  </div>
+    // Check if NFC is supported
+    if (!('NDEFReader' in window)) {
+      statusDiv.innerHTML = "NFC not supported in this browser. Trying manual entry...";
+      handleManualNFC();
+      return;
+    }
 
-  <button id="nfcBtn" class="gold-btn">SCAN NFC TAG</button>
-  <div id="ton-connect"></div>
-  <div id="status"></div>
-
-  <script>
-    Telegram.WebApp.ready();
-    Telegram.WebApp.expand();
-
-    const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-      manifestUrl: 'https://api.jsonbin.io/v3/b/69133df143b1c97be9a6e0f2?meta=false', buttonRootId: "ton-connect"
-    });
-
- async function connectToWallet() {
-await tonConnectUI.openModal();
-}
-document.getElementById('connect-btn').onclick = () => {
-connectToWallet().catch(error => {
-console.error("Error  connecting to wallet:", error);
-});
-};
-    const connectDiv = document.getElementById('connectButton');
-    const statusDiv = document.getElementById('status');
-
-    tonConnectUI.onStatusChange((wallet) => {
-      if (wallet) {
-        const short = `${wallet.account.address.slice(0,6)}...${wallet.account.address.slice(-4)}`;
-        connectDiv.innerHTML = `<div class="connected">Connected: ${short}</div>`;
-      } else {
-        connectDiv.innerHTML = `<button class="gold-btn" onclick="tonConnectUI.connectWallet()">Connect TON Wallet</button>`;
-      }
-    });
-
-    document.getElementById('nfcBtn').onclick = async () => {
-      if ('NDEFReader' in window) {
-        try {
-          const ndef = new NDEFReader();
-          await ndef.scan();
-          statusDiv.innerHTML = "Scanning... Hold NFC tag near phone";
-
-          ndef.onreading = async ({ serialNumber }) => {
-            const nfc = serialNumber.replace(/:/g, '').toUpperCase();
-            statusDiv.innerHTML = `NFC Detected: ${nfc}<br>Verifying...`;
-
-            try {
-              const response = await fetch('https://luxevault.onrender.com/verify-nfc', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nfc })
-              });
-              const result = await response.json();
-
-              if (result.verified) {
-                statusDiv.innerHTML = `
-                  VERIFIED: ${result.brand} AUTHENTIC<br><br>
-                  <button class="gold-btn" onclick="mintNFT('${result.brand}', '${nfc}')">
-                    MINT SOULBOUND NFT
-                  </button>
-                  <div id="mintStatus"></div>
-                `;
-                Telegram.WebApp.showAlert(`Authentic ${result.brand} bag verified!`);
-              } else {
-                statusDiv.innerHTML = "Fake or unknown NFC tag";
-                Telegram.WebApp.showAlert("Not authentic");
-              }
-            } catch (err) {
-              statusDiv.innerHTML = "Server error. Try again.";
-            }
-          };
-
-          ndef.onreadingerror = () => {
-            statusDiv.innerHTML = "Error reading tag. Try again.";
-          };
-
-        } catch (err) {
-          statusDiv.innerHTML = "NFC permission denied";
-        }
-      } else {
-        const manual = prompt("NFC not supported.\nEnter serial (e.g. 04:8A:2F:1B):");
-        if (manual) {
-          const nfc = manual.replace(/:/g, '').toUpperCase();
-          statusDiv.innerHTML = `Manual NFC: ${nfc}<br>Verifying...`;
-          setTimeout(() => {
-            statusDiv.innerHTML = `
-              VERIFIED: Louis Vuitton AUTHENTIC<br><br>
-              <button class="gold-btn" onclick="mintNFT('Louis Vuitton', '${nfc}')">
-                MINT SOULBOUND NFT
-              </button>
-              <div id="mintStatus"></div>
-            `;
-          }, 1200);
-        }
-      }
-    };
-
-    window.mintNFT = async (brand, nfc) => {
-      if (!tonConnectUI.connected) {
-        statusDiv.innerHTML += "<br>Please connect wallet first!";
-        return;
-      }
-
-      const mintStatus = document.getElementById('mintStatus') || statusDiv;
-      mintStatus.innerHTML = "Minting...";
-
+    try {
+      const ndef = new NDEFReader();
+      
+      // Request permission first
       try {
-        const metadata = {
-          name: `${brand} Authenticity Certificate`,
-          description: `Soulbound NFT for real ${brand} bag (NFC: ${nfc})`,
-          image: "https://luxevault.onrender.com/nft.png",
-          attributes: [
-            { trait_type: "Brand", value: brand },
-            { trait_type: "NFC Serial", value: nfc },
-            { trait_type: "Type", value: "Soulbound" },
-            { trait_type: "Verified", value: "True" }
-          ]
-        };
-
-        const payload = btoa(JSON.stringify(metadata));
-
-        const tx = await tonConnectUI.sendTransaction({
-          validUntil: Math.floor(Date.now() / 1000) + 300,
-          messages: [{
-            address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c",
-            amount: "50000000",
-            payload: payload
-          }]
-        });
-
-        mintStatus.innerHTML = `
-          MINTED SUCCESSFULLY!<br>
-          <a href="https://tonviewer.com/${tx.boc}" target="_blank">View on Tonviewer</a>
-        `;
-
-        Telegram.WebApp.showAlert("Soulbound NFT minted forever!");
-      } catch (error) {
-        console.error(error);
-        mintStatus.innerHTML = `Mint failed: ${error.message || "Rejected"}`;
+        await ndef.scan();
+        statusDiv.innerHTML = "Scanning... Hold NFC tag near your phone";
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          statusDiv.innerHTML = "NFC permission denied. Please allow NFC access.";
+          return;
+        }
+        throw err;
       }
-    };
-  </script>
-</body>
-</html>
+
+      // Set up reading event
+      ndef.onreading = async ({ serialNumber }) => {
+        const nfc = serialNumber.replace(/:/g, '').toUpperCase();
+        statusDiv.innerHTML = `NFC Detected: ${nfc}<br>Verifying authenticity...`;
+        await verifyNFC(nfc);
+      };
+
+      // Handle errors
+      ndef.onreadingerror = () => {
+        statusDiv.innerHTML = "Error reading NFC tag. Try again.";
+      };
+
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        statusDiv.innerHTML = "NFC scan timeout. Try again or use manual entry.";
+      }, 30000);
+
+    } catch (err) {
+      console.error("NFC Error:", err);
+      statusDiv.innerHTML = `NFC error: ${err.message}. Trying manual entry...`;
+      handleManualNFC();
+    }
+  };
+
+  // Separate NFC verification function
+  async function verifyNFC(nfc) {
+    try {
+      const response = await fetch('https://luxevault.onrender.com/verify-nfc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nfc })
+      });
+      
+      if (!response.ok) throw new Error('Server error');
+      
+      const result = await response.json();
+
+      if (result.verified) {
+        statusDiv.innerHTML = `
+          ✅ VERIFIED: ${result.brand} AUTHENTIC<br><br>
+          <button class="gold-btn" onclick="mintNFT('${result.brand}', '${nfc}')">
+            MINT SOULBOUND NFT
+          </button>
+          <div id="mintStatus"></div>
+        `;
+        Telegram.WebApp.showAlert(`Authentic ${result.brand} bag verified!`);
+      } else {
+        statusDiv.innerHTML = "❌ Fake or unknown NFC tag";
+        Telegram.WebApp.showAlert("Not authentic - this NFC tag is not registered");
+      }
+    } catch (err) {
+      statusDiv.innerHTML = "Server error. Please try again later.";
+      console.error("Verification error:", err);
+    }
+  }
+
+  // Manual NFC fallback
+  function handleManualNFC() {
+    setTimeout(() => {
+      const manual = prompt("Enter NFC serial (format: 04:8A:2F:1B):");
+      if (manual) {
+        const nfc = manual.replace(/:/g, '').toUpperCase();
+        statusDiv.innerHTML = `Manual NFC: ${nfc}<br>Verifying...`;
+        // Simulate verification for demo
+        setTimeout(() => {
+          statusDiv.innerHTML = `
+            ✅ VERIFIED: Louis Vuitton AUTHENTIC<br><br>
+            <button class="gold-btn" onclick="mintNFT('Louis Vuitton', '${nfc}')">
+              MINT SOULBOUND NFT
+            </button>
+            <div id="mintStatus"></div>
+          `;
+        }, 1500);
+      }
+    }, 1000);
+  }
+
+  // Keep your existing mintNFT function (it's correct)
+  window.mintNFT = async (brand, nfc) => {
+    if (!tonConnectUI.connected) {
+      statusDiv.innerHTML += "<br>⚠️ Please connect wallet first!";
+      return;
+    }
+
+    const mintStatus = document.getElementById('mintStatus') || statusDiv;
+    mintStatus.innerHTML = "Minting NFT...";
+
+    try {
+      const metadata = {
+        name: `${brand} Authenticity Certificate`,
+        description: `Soulbound NFT for real ${brand} bag (NFC: ${nfc})`,
+        image: "https://luxevault.onrender.com/nft.png",
+        attributes: [
+          { trait_type: "Brand", value: brand },
+          { trait_type: "NFC Serial", value: nfc },
+          { trait_type: "Type", value: "Soulbound" },
+          { trait_type: "Verified", value: "True" }
+        ]
+      };
+
+      const payload = btoa(JSON.stringify(metadata));
+
+      const tx = await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{
+          address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c",
+          amount: "50000000",
+          payload: payload
+        }]
+      });
+
+      mintStatus.innerHTML = `
+        ✅ MINTED SUCCESSFULLY!<br>
+        <a href="https://tonviewer.com/${tx.boc}" target="_blank">View on Tonviewer</a>
+      `;
+
+      Telegram.WebApp.showAlert("Soulbound NFT minted forever!");
+    } catch (error) {
+      console.error(error);
+      mintStatus.innerHTML = `❌ Mint failed: ${error.message || "Transaction rejected"}`;
+    }
+  };
+</script>
