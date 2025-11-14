@@ -28,6 +28,8 @@
     #result { margin-top:20px; padding:20px; background:#FFD700; color:#000; border-radius:12px; }
     .fake-alert { background:#FF0000; color:white; padding:20px; border-radius:12px; margin:20px 0; }
     .sponsor { background:#2a2a2a; padding:15px; border-radius:8px; margin:15px 0; color:#FFD700; }
+    .loading { color: #FFD700; margin: 10px 0; }
+    .error { background: #ff4444; color: white; padding: 15px; border-radius: 8px; margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -97,17 +99,25 @@
     });
 
     async function loadUserData() {
+        if (!userAddress) return;
+        
         try {
             const response = await fetch('/streak', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ wallet: userAddress })
             });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load streak data');
+            }
+            
             const data = await response.json();
             userStreak = data.streak || 1;
             document.getElementById('streakDisplay').textContent = `${userStreak}x`;
         } catch (error) {
             console.log('Error loading user data:', error);
+            // Continue with default streak
         }
     }
 
@@ -117,47 +127,55 @@
             try {
                 const ndef = new NDEFReader();
                 await ndef.scan();
-                statusDiv.innerHTML = "📱 Scanning... Hold NFC tag to phone";
+                statusDiv.innerHTML = "<div class='loading'>📱 Scanning... Hold NFC tag to phone</div>";
                 
                 ndef.onreading = async ({ message }) => {
                     let nfcData = "";
                     for (const record of message.records) {
-                        nfcData += String.fromCharCode(...record.data);
+                        if (record.data) {
+                            nfcData += String.fromCharCode(...record.data);
+                        }
                     }
                     document.getElementById('nfcSerial').value = nfcData.slice(0, 20) + '...';
-                    statusDiv.innerHTML = "✅ NFC tag captured! Click verify to earn";
+                    statusDiv.innerHTML = "<div class='loading'>✅ NFC tag captured! Click verify to earn</div>";
                 };
                 
                 ndef.onreadingerror = () => {
-                    statusDiv.innerHTML = "❌ NFC read error. Try manual entry.";
+                    statusDiv.innerHTML = "<div class='error'>❌ NFC read error. Try manual entry.</div>";
                 };
+                
+                // Timeout after 30 seconds
+                setTimeout(() => {
+                    statusDiv.innerHTML = "<div class='loading'>⏰ Scan timeout. Try again or use manual entry.</div>";
+                }, 30000);
+                
             } catch (error) {
-                statusDiv.innerHTML = "❌ NFC not supported. Use manual entry.";
+                statusDiv.innerHTML = `<div class='error'>❌ NFC error: ${error.message}. Use manual entry.</div>`;
             }
         } else {
-            statusDiv.innerHTML = "❌ NFC not available. Enter serial manually.";
+            statusDiv.innerHTML = "<div class='error'>❌ NFC not available in this browser. Enter serial manually.</div>";
         }
     }
 
     // Main verification with instant payout
     async function verifyAndPay() {
         if (!userAddress) {
-            statusDiv.innerHTML = "❌ Please connect TON wallet first";
+            statusDiv.innerHTML = "<div class='error'>❌ Please connect TON wallet first</div>";
             tonConnectUI.openModal();
             return;
         }
 
         const manualInput = document.getElementById('nfcSerial').value.trim();
         if (!manualInput) {
-            statusDiv.innerHTML = "❌ Please enter or scan NFC serial";
+            statusDiv.innerHTML = "<div class='error'>❌ Please enter or scan NFC serial</div>";
             return;
         }
 
-        statusDiv.innerHTML = "🔍 Verifying authenticity...";
+        statusDiv.innerHTML = "<div class='loading'>🔍 Verifying authenticity...</div>";
         document.getElementById('verifyBtn').disabled = true;
 
         try {
-            const result = await fetch('/verify-nfc', {
+            const response = await fetch('/verify-nfc', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -165,7 +183,15 @@
                     nfc: manualInput,
                     ref: getReferrerFromURL()
                 })
-            }).then(r => r.json());
+            });
+            
+            // ADDED ERROR HANDLING
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+            
+            const result = await response.json();
 
             if (result.verified) {
                 document.getElementById('result').style.display = 'block';
@@ -175,7 +201,7 @@
                     <p>You earned: <span class="reward">${result.ton_reward}</span> + <span class="reward">${result.luxe_reward.toLocaleString()} $LUXE</span></p>
                     <p>Streak: ${result.streak}x multiplier</p>
                     <p>NFT Badge: <a href="https://tonviewer.com/${result.nft_badge}" target="_blank">View on-chain proof</a></p>
-                    <img src="/badge/${userAddress}.png" width="200" style="margin:10px;">
+                    <img src="/badge/${userAddress}.png" width="200" style="margin:10px;" onerror="this.style.display='none'">
                     <br>
                     <button class="gold-btn" onclick="shareAchievement()">🎉 Share on Social Media</button>
                 `;
@@ -192,11 +218,13 @@
                         <h3>❌ FAKE DETECTED</h3>
                         <p>This item failed cryptographic verification.</p>
                         <p>No reward issued. Fee used to fight counterfeits.</p>
+                        ${result.error ? `<p><small>Error: ${result.error}</small></p>` : ''}
                     </div>
                 `;
             }
         } catch (error) {
-            statusDiv.innerHTML = `❌ Error: ${error.message}`;
+            console.error('Verification error:', error);
+            statusDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
         } finally {
             document.getElementById('verifyBtn').disabled = false;
         }
@@ -209,7 +237,7 @@
             return;
         }
         
-        document.getElementById('claimStatus').innerHTML = "🪙 Claiming 500 $LUXE...";
+        document.getElementById('claimStatus').innerHTML = "<div class='loading'>🪙 Claiming 500 $LUXE...</div>";
         
         try {
             const response = await fetch('/claim-luxe', {
@@ -217,10 +245,16 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ wallet: userAddress })
             });
+            
+            if (!response.ok) {
+                throw new Error('Claim request failed');
+            }
+            
             const result = await response.json();
-            document.getElementById('claimStatus').innerHTML = `✅ ${result.message}`;
+            document.getElementById('claimStatus').innerHTML = `<div class="loading">✅ ${result.message}</div>`;
         } catch (error) {
-            document.getElementById('claimStatus').innerHTML = "❌ Claim failed";
+            console.error('Claim error:', error);
+            document.getElementById('claimStatus').innerHTML = `<div class="error">❌ Claim failed: ${error.message}</div>`;
         }
     }
 
@@ -236,9 +270,17 @@
                 <p><strong>Your referral link:</strong></p>
                 <input type="text" value="${referralLink}" style="width:100%; padding:10px; margin:10px 0; background:#333; color:white; border:none; border-radius:6px;" readonly>
                 <p>Share on Twitter, Instagram, TikTok</p>
-                <button class="gold-btn" onclick="navigator.clipboard.writeText('${referralLink}')">📋 Copy Link</button>
+                <button class="gold-btn" onclick="copyToClipboard('${referralLink}')">📋 Copy Link</button>
             </div>
         `;
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Referral link copied to clipboard!');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+        });
     }
 
     function getReferrerFromURL() {
@@ -273,33 +315,58 @@
                 body: JSON.stringify({ wallet: userAddress })
             });
             
+            if (!response.ok) {
+                throw new Error('Subscription request failed');
+            }
+            
             const result = await response.json();
-            statusDiv.innerHTML = `⭐ PREMIUM ACTIVATED! ${result.badge} badge unlocked`;
+            statusDiv.innerHTML = `<div class="loading">⭐ PREMIUM ACTIVATED! ${result.badge} badge unlocked</div>`;
         } catch (error) {
-            statusDiv.innerHTML = "❌ Premium upgrade failed";
+            console.error('Premium error:', error);
+            statusDiv.innerHTML = `<div class="error">❌ Premium upgrade failed: ${error.message}</div>`;
         }
     }
 
     function shareAchievement() {
+        if (!userAddress) return;
+        
         const text = `I just verified my authentic luxury item on @LuxeVault and earned TON + $LUXE tokens! 👜💰 Tap your bag, prove it's real, get paid.`;
-        const url = `https://luxevault.onrender.com/badge/${userAddress}.png`;
+        const url = window.location.href;
         
         if (navigator.share) {
             navigator.share({
                 title: 'LUXE VAULT Verified',
                 text: text,
-                url: window.location.href
+                url: url
+            }).catch(err => {
+                console.log('Share failed:', err);
+                copyToClipboard(text + ' ' + url);
+                alert('Achievement copied! Share on social media 🎉');
             });
         } else {
-            navigator.clipboard.writeText(text + ' ' + window.location.href);
+            copyToClipboard(text + ' ' + url);
             alert('Achievement copied! Share on social media 🎉');
         }
     }
 
     // Initialize
     if (getReferrerFromURL()) {
-        statusDiv.innerHTML = "👥 Welcome! You were referred by a friend";
+        statusDiv.innerHTML = "<div class='loading'>👥 Welcome! You were referred by a friend - earn extra rewards!</div>";
     }
+
+    // Demo NFC examples for testing
+    setTimeout(() => {
+        if (document.getElementById('nfcSerial').value === '') {
+            statusDiv.innerHTML += `
+                <div style="background:#1a1a1a; padding:15px; border-radius:10px; margin-top:20px; font-size:0.9rem;">
+                    <strong>Demo NFC Examples:</strong><br>
+                    Real: <code style="color:#FFD700; cursor:pointer;" onclick="document.getElementById('nfcSerial').value='04:8A:2F:1B:CE:45:80'">04:8A:2F:1B:CE:45:80</code> (Hermès)<br>
+                    Real: <code style="color:#FFD700; cursor:pointer;" onclick="document.getElementById('nfcSerial').value='04:8A:2F:1B:LV:01:25'">04:8A:2F:1B:LV:01:25</code> (Louis Vuitton)<br>
+                    Fake: <code style="color:#FF4444; cursor:pointer;" onclick="document.getElementById('nfcSerial').value='99:AA:BB:CC:DD:EE:FF'">99:AA:BB:CC:DD:EE:FF</code>
+                </div>
+            `;
+        }
+    }, 2000);
   </script>
 </body>
 </html>

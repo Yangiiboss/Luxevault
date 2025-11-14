@@ -1,5 +1,7 @@
-fastapi
-uvicorn
-jinja2
-gunicorn
-flask
+Flask==2.3.3
+redis==5.0.1
+Pillow==10.0.1
+pytoniq==0.1.3
+pytonconnect==0.0.6
+requests==2.31.0
+gunicorn==21.2.0
