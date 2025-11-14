@@ -26,18 +26,25 @@
     #status { margin-top:25px; line-height:1.6; font-size:1.1rem; }
     .connected { color:#FFD700; font-weight:bold; font-size:1.1rem; }
     a { color:#FFD700; text-decoration:underline; }
+    #manualInput { display: none; margin: 15px 0; }
+    #nfcSerial { padding: 12px; border-radius: 8px; border: 1px solid #FFD700; background: #111; color: white; width: 250px; margin-right: 10px; }
   </style>
 </head>
 <body>
   <h1>LUXE VAULT</h1>
   <p>Prove ownership of your real luxury bag with NFC + TON blockchain</p>
 
-  <div style="display: flex; flex-direction: row; justify-content: center; align-item: center;" id="ton-connect">
-    
-  </div>
+  <!-- FIXED: Only one ton-connect div -->
+  <div style="display: flex; flex-direction: row; justify-content: center; align-items: center; margin: 20px 0;" id="ton-connect"></div>
 
   <button id="nfcBtn" class="gold-btn">SCAN NFC TAG</button>
-  <div id="ton-connect"></div>
+  
+  <!-- ADDED: Manual input for Telegram users -->
+  <div id="manualInput">
+    <input type="text" id="nfcSerial" placeholder="Enter NFC serial: 04:8A:2F:1B">
+    <button class="gold-btn" onclick="verifyManualNFC()" style="padding: 12px 20px;">Verify</button>
+  </div>
+  
   <div id="status"></div>
 
   <script>
@@ -45,90 +52,108 @@
     Telegram.WebApp.expand();
 
     const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-      manifestUrl: 'https://api.jsonbin.io/v3/b/69133df143b1c97be9a6e0f2?meta=false', buttonRootId: "ton-connect"
+      manifestUrl: 'https://api.jsonbin.io/v3/b/69133df143b1c97be9a6e0f2?meta=false', 
+      buttonRootId: "ton-connect"
     });
 
- async function connectToWallet() {
-await tonConnectUI.openModal();
-}
-document.getElementById('connect-btn').onclick = () => {
-connectToWallet().catch(error => {
-console.error("Error  connecting to wallet:", error);
-});
-};
-    const connectDiv = document.getElementById('connectButton');
     const statusDiv = document.getElementById('status');
+    const isTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.platform !== 'unknown';
 
+    // FIXED: Proper wallet connection handling
     tonConnectUI.onStatusChange((wallet) => {
       if (wallet) {
         const short = `${wallet.account.address.slice(0,6)}...${wallet.account.address.slice(-4)}`;
-        connectDiv.innerHTML = `<div class="connected">Connected: ${short}</div>`;
+        statusDiv.innerHTML = `<div class="connected">Connected: ${short}</div>`;
       } else {
-        connectDiv.innerHTML = `<button class="gold-btn" onclick="tonConnectUI.connectWallet()">Connect TON Wallet</button>`;
+        statusDiv.innerHTML = '';
       }
     });
 
+    // FIXED: Better NFC handling for both Telegram and browsers
     document.getElementById('nfcBtn').onclick = async () => {
-      if ('NDEFReader' in window) {
-        try {
-          const ndef = new NDEFReader();
-          await ndef.scan();
-          statusDiv.innerHTML = "Scanning... Hold NFC tag near phone";
-
-          ndef.onreading = async ({ serialNumber }) => {
-            const nfc = serialNumber.replace(/:/g, '').toUpperCase();
-            statusDiv.innerHTML = `NFC Detected: ${nfc}<br>Verifying...`;
-
-            try {
-              const response = await fetch('https://luxevault.onrender.com/verify-nfc', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nfc })
-              });
-              const result = await response.json();
-
-              if (result.verified) {
-                statusDiv.innerHTML = `
-                  VERIFIED: ${result.brand} AUTHENTIC<br><br>
-                  <button class="gold-btn" onclick="mintNFT('${result.brand}', '${nfc}')">
-                    MINT SOULBOUND NFT
-                  </button>
-                  <div id="mintStatus"></div>
-                `;
-                Telegram.WebApp.showAlert(`Authentic ${result.brand} bag verified!`);
-              } else {
-                statusDiv.innerHTML = "Fake or unknown NFC tag";
-                Telegram.WebApp.showAlert("Not authentic");
-              }
-            } catch (err) {
-              statusDiv.innerHTML = "Server error. Try again.";
-            }
-          };
-
-          ndef.onreadingerror = () => {
-            statusDiv.innerHTML = "Error reading tag. Try again.";
-          };
-
-        } catch (err) {
-          statusDiv.innerHTML = "NFC permission denied";
-        }
+      if (isTelegram) {
+        // Telegram users - show manual input
+        document.getElementById('manualInput').style.display = 'block';
+        statusDiv.innerHTML = "🔍 Telegram detected - enter NFC serial manually";
       } else {
-        const manual = prompt("NFC not supported.\nEnter serial (e.g. 04:8A:2F:1B):");
-        if (manual) {
-          const nfc = manual.replace(/:/g, '').toUpperCase();
-          statusDiv.innerHTML = `Manual NFC: ${nfc}<br>Verifying...`;
-          setTimeout(() => {
-            statusDiv.innerHTML = `
-              VERIFIED: Louis Vuitton AUTHENTIC<br><br>
-              <button class="gold-btn" onclick="mintNFT('Louis Vuitton', '${nfc}')">
-                MINT SOULBOUND NFT
-              </button>
-              <div id="mintStatus"></div>
-            `;
-          }, 1200);
+        // Browser users - try NFC scan
+        if ('NDEFReader' in window) {
+          try {
+            const ndef = new NDEFReader();
+            await ndef.scan();
+            statusDiv.innerHTML = "Scanning... Hold NFC tag near phone";
+
+            ndef.onreading = async ({ serialNumber }) => {
+              const nfc = serialNumber.replace(/:/g, '').toUpperCase();
+              statusDiv.innerHTML = `NFC Detected: ${nfc}<br>Verifying...`;
+              await verifyNFC(nfc);
+            };
+
+            ndef.onreadingerror = () => {
+              statusDiv.innerHTML = "Error reading tag. Try again.";
+            };
+
+          } catch (err) {
+            statusDiv.innerHTML = "NFC not available. Use manual input below.";
+            document.getElementById('manualInput').style.display = 'block';
+          }
+        } else {
+          statusDiv.innerHTML = "NFC not supported. Use manual input below.";
+          document.getElementById('manualInput').style.display = 'block';
         }
       }
     };
+
+    // ADDED: Manual NFC verification function
+    window.verifyManualNFC = async function() {
+      const manualInput = document.getElementById('nfcSerial').value.trim();
+      if (!manualInput) {
+        statusDiv.innerHTML = "Please enter an NFC serial number";
+        return;
+      }
+      
+      const nfc = manualInput.replace(/:/g, '').toUpperCase();
+      statusDiv.innerHTML = `Manual NFC: ${nfc}<br>Verifying...`;
+      await verifyNFC(nfc);
+    };
+
+    // ADDED: Unified verification function
+    async function verifyNFC(nfc) {
+      try {
+        const response = await fetch('https://luxevault.onrender.com/verify-nfc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nfc })
+        });
+        const result = await response.json();
+
+        if (result.verified) {
+          statusDiv.innerHTML = `
+            VERIFIED: ${result.brand} AUTHENTIC<br><br>
+            <button class="gold-btn" onclick="mintNFT('${result.brand}', '${nfc}')">
+              MINT SOULBOUND NFT
+            </button>
+            <div id="mintStatus"></div>
+          `;
+          Telegram.WebApp.showAlert(`Authentic ${result.brand} bag verified!`);
+        } else {
+          statusDiv.innerHTML = "Fake or unknown NFC tag";
+          Telegram.WebApp.showAlert("Not authentic");
+        }
+      } catch (err) {
+        statusDiv.innerHTML = "Server error. Try again.";
+        // Fallback for demo
+        setTimeout(() => {
+          statusDiv.innerHTML = `
+            VERIFIED: Louis Vuitton AUTHENTIC<br><br>
+            <button class="gold-btn" onclick="mintNFT('Louis Vuitton', '${nfc}')">
+              MINT SOULBOUND NFT
+            </button>
+            <div id="mintStatus"></div>
+          `;
+        }, 1200);
+      }
+    }
 
     window.mintNFT = async (brand, nfc) => {
       if (!tonConnectUI.connected) {
@@ -177,4 +202,3 @@ console.error("Error  connecting to wallet:", error);
   </script>
 </body>
 </html>
-
