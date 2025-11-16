@@ -1,59 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LUXE VAULT</title>
-
-  <!-- NO CACHE (CRITICAL FOR TELEGRAM) -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-
-  <!-- TELEGRAM WEB APP -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- TON CONNECT — OFFICIAL CDN -->
-  <script src='https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js'></script>
-
-  <link type="text/css" href="styles.css" rel="stylesheet"/>
-  <!-- <script src="logic.js"></script> -->
-</head>
-<body>
-  <div id="header">
-    <img height="40px" src="../assets/logo-hero.png" alt="luxe-vault-logo"/>
-    <div id="ton-connect">
-    </div>
-  </div>
-  <div id="hero">
-    <h1>Scan • Verify • Own</h1>
-    <span id="punchline">Prove ownership of your real luxury items with NFC + TON blockchain</span>
-    <span id="heroText">
-      Securely authenticate and prove ownership of your luxury items using NFC technology and TON blockchain
-      </span>
-    <img height="230px" src="../assets/logo-hero.png" alt="luxe-vault-logo"/>
-
-    <button id="getStarted" >
-      Get Started
-    </button>
-  </div>
-
-  <!-- FIXED: Only one ton-connect div -->
-  <div id="connectScanDiv">
-    <button id="nfcBtn" class="gold-btn">
-      SCAN NFC TAG
-    </button>
-    
-    <!-- ADDED: Manual input for Telegram users -->
-    <div id="manualInput">
-      <input type="text" id="nfcSerial" placeholder="Enter NFC serial: 04:8A:2F:1B">
-      <button class="gold-btn" onclick="verifyManualNFC()" style="padding: 12px 20px;">Verify</button>
-    </div>
-  </div>
-  
-  <div id="status"></div>
-  <script>
-        if ( window.Telegram ) {
+    if ( window.Telegram ) {
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();  
     }
@@ -215,7 +160,3 @@
         document.getElementById("connectScanDiv").style.display = 'block';
         document.getElementById("hero").style.display = "none";
     };
-  </script>
-</body>
-</html>
-

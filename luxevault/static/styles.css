@@ -1,0 +1,135 @@
+    * { 
+        margin:0; 
+        padding:0; 
+        box-sizing:border-box; 
+    }
+
+    body { 
+        background:#1f1f1f; 
+        color:#fff; 
+        font-family:'Helvetica Neue',Arial,sans-serif; 
+        text-align:center; 
+        padding:0px; 
+        min-height:100vh; 
+    }
+
+    #ton-connect {
+        height: fit-content;
+        width: fit-content;
+    }
+
+    #punchline {
+        font-size: 16px;
+        margin-top: 10px;
+    }
+
+    #header {
+        padding:15px 3%;
+        width: 100%;
+        flex:content;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    #getStarted {
+        background-color: white;
+        margin-top: 50px;
+        font-size: 20px;
+        color:#272727; 
+        border:none; 
+        padding:14px 40px; 
+        border-radius:30px; 
+        font-weight:bold; 
+        cursor:pointer; 
+        margin:12px auto; 
+        display:inline-block; 
+        transition:0.2s; 
+        
+    }
+
+    #connectScanDiv {
+        display: none;
+        padding-top: 50px;
+    }
+
+    #heroText {
+        font-size: 13px;
+        margin-top: 10px;
+        color: rgb(180, 180, 180);
+    }
+
+    #hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 88%;
+        margin: auto;
+    }
+
+    h1 { 
+        font-size:1.5rem; 
+        background:linear-gradient(45deg,#FFD700,#FFA500); 
+        -webkit-background-clip:text; 
+        background-clip: text;
+        -webkit-text-fill-color:transparent; 
+        margin-bottom:10px; 
+        font-weight: 800;
+        margin-top: 50px;
+    }
+
+    p { 
+        opacity:0.8; 
+        margin-bottom:30px; 
+        font-size:1.1rem; 
+    }
+
+    .gold-btn { 
+        background:#FFD700; 
+        color:#272727; 
+        border:none; 
+        padding:14px 36px; 
+        border-radius:30px; 
+        font-weight:bold; 
+        font-size:1rem; 
+        cursor:pointer; 
+        margin:12px auto; 
+        display:inline-block; 
+        transition:0.2s; 
+    }
+
+    .gold-btn:hover { 
+        background:#FFC107; 
+        transform:scale(1.03); 
+    }
+
+    #status { 
+        margin-top:25px; 
+        line-height:1.6; 
+        font-size:1.1rem; 
+    }
+
+    .connected { 
+        color:#FFD700; 
+        font-weight:bold; 
+        font-size:1.1rem; 
+    }
+
+    a { 
+        color:#FFD700; 
+        text-decoration:underline; 
+    }
+
+    #manualInput { 
+        display: none; 
+        margin: 15px 0; 
+    }
+
+    #nfcSerial { 
+        padding: 12px; 
+        border-radius: 8px; 
+        border: 1px solid #FFD700; 
+        background: #111; 
+        color: white; 
+        width: 250px; 
+        margin-right: 10px; 
+    }
