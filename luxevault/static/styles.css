@@ -26,9 +26,10 @@
     #header {
         padding:15px 3%;
         width: 100%;
-        flex:content;
+        display:flex;
         flex-direction: row;
         justify-content: space-between;
+        align-items: center;
     }
 
     #getStarted {
